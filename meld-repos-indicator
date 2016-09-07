@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import gi, signal
+gi.require_version('AppIndicator3', '0.1')
+from gi.repository import AppIndicator3, Gtk
+from os import listdir, system
+from os.path import expanduser
+
+APPINDICATOR_ID = 'meld_repos_indicator'
+#--- WRITE YOUR REPOS DIRECTORY HERE
+DIR = expanduser('~') + '/data/repos/'
+indicator = AppIndicator3.Indicator.new(APPINDICATOR_ID, '/usr/lib/meld-repos-indicator/view-list-icons-symbolic.png', AppIndicator3.IndicatorCategory.OTHER)
+
+def main():
+    indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+    update_list(None)
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    Gtk.main()
+def build_menu():
+    data = sorted(listdir(DIR))
+    menu = Gtk.Menu()
+    item_update = Gtk.MenuItem('Update list')
+    item_update.connect('activate', update_list)
+    menu.append(item_update)
+    menu.append(Gtk.SeparatorMenuItem.new())
+    for dir in data:
+        if dir == 'AUR':
+            data_AUR = sorted(listdir(DIR + dir))
+            for AURdir in data_AUR:
+                item = make_menu_for_a_repo(dir + '/' + AURdir)
+                menu.append(item)
+        else:
+            item = make_menu_for_a_repo(dir)
+            menu.append(item)
+    menu.show_all()
+    return menu
+def make_menu_for_a_repo(dir):
+    item = Gtk.MenuItem(dir)
+    submenu = Gtk.Menu()
+    item_meld = Gtk.MenuItem('Open Meld')
+    item_terminal = Gtk.MenuItem('Open terminal')
+    item_meld.connect('activate', open_meld, (dir))
+    item_terminal.connect('activate', open_terminal, (dir))
+    submenu.append(item_meld)
+    submenu.append(item_terminal)
+    item.set_submenu(submenu)
+    return item
+def update_list(xxx):
+    indicator.set_menu(build_menu())
+def open_meld(xxx, repo):
+    system('meld ' + DIR + repo)
+def open_terminal(xxx, repo):
+    system('gnome-terminal --working-directory ' + DIR + repo)
+def quit(source):
+    Gtk.main_quit()
+
+if __name__ == "__main__":
+    main()
